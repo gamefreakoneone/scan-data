@@ -61,26 +61,43 @@ with open("/home/pi/Desktop/scan-data/Data.csv" , mode='r') as file:
         
         heart_rate=int(line[1])
         
-        if(int(heart_rate<=110 and heart_rate>=60)):
-            {
-            print("The patient is fine")
-            
-            if(first<=20):
+        if(int(heart_rate<=110 and heart_rate>=60)):            
+            if(first<=21):
                 conn.execute("""INSERT INTO Company (Name, Heartrate, Temperature, Status) \
-                VALUES (?,?,?,?);""",[(line[0],line[1],line[2],'Normal')])
+                VALUES (?,?,?,?);""",[(line[0]),(line[1]),(line[2]),('Normal')])
                 conn.commit()
-        }
+            print("The patient is fine")
+        
         elif(heart_rate>110):
             print("The patient is experiencing high heart rate. Seeking medical attention.\n")
+            if(first<=21):
+                name=line[0]
+                heart=line[1]
+                temp=line[2]
+                conn.execute("""INSERT INTO Company (Name, Heartrate, Temperature, Status) \
+                VALUES (?,?,?,?);""",[( line[0]),(line[1]),(line[2]),('High heart rate')])
+                conn.commit()
             callDoc(line[0],line[1],line[2])
         else:
             print("The patient is experiencing low heart rate. Seeking medical attention")
+            if(first<=21):
+                conn.execute("""INSERT INTO Company (Name, Heartrate, Temperature, Status) \
+                VALUES (?,?,?,?);""",[( line[0]),(line[1]),(line[2]),('Low heart Rate')])
+                conn.commit()
             callDoc(line[0],line[1],line[2])
 
         print("________________________________________")
         print("")
         time.sleep(2)
         first=first+1
-
-
+        
+        
+    print("Final status!\n")
+    cursor=conn.execute("""SELECT Name, Heartrate, Temperature, Status from Company""")
+    for row in cursor:
+        print("Name = ", row[0])
+        print ("Heartrate = ", row[1])
+        print ("Temperature = ", row[2])
+        print ("Status = ", row[3], "\n")
+    
     file.close()

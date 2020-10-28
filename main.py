@@ -1,14 +1,15 @@
-import os
 import csv
 import time
 import serial
 import RPi.GPIO as GPIO
-from selenium import webdriver
 import sqlite3
 
-conn=sqlite3.connect('test.db')
+#def button_callback(channel=18):
+#print("Button was pushed!")
 
-conn.execute('''CREATE TABLE Company
+conn=sqlite3.connect('Halo.db')
+
+conn.execute('''CREATE TABLE Health
                 (Name TEXT NOT NULL,
                 Heartrate int NOT NULL,
                 Temperature int NOT NULL,
@@ -18,6 +19,7 @@ conn.execute('''CREATE TABLE Company
 
 print("Database created successfully!")
 
+patients=dict()
 
 def callDoc(Name, Heart_Rate, Temperature):
     msg="Patient {} conditions:\nHeart Rate:{}\nTemperature:{}".format(Name,Heart_Rate,Temperature)
@@ -30,8 +32,22 @@ def callDoc(Name, Heart_Rate, Temperature):
     time.sleep(3)
     print("message sent…")
 
-GPIO.setmode(GPIO.BOARD)
+def Emergency(callback):
+    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    print("\n\nPatient ",P_name," is experiencing complications! Sending sms!\n\n")
+    msg="Patient {} is experiencing problems!! Asking for medical SUPPORT!".format(P_name)
+    port.write(b'AT+CMGS="8688914045"\r')
+    port.reset_output_buffer()
+    port.write(str.encode(msg+chr(26)))
+    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    time.sleep(3)
+
+GPIO.setmode(GPIO.BCM)
 port = serial.Serial("/dev/ttyS0", baudrate=9600, timeout=1)
+GPIO.setup(18, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+input_state=GPIO.input(18)
+GPIO.add_event_detect(18, GPIO.RISING, callback=Emergency)
+
 
 start =0
 first=0
@@ -43,8 +59,11 @@ port.write(b"AT+CMGF=1\r")
 
 with open("/home/pi/Desktop/scan-data/Data.csv" , mode='r') as file:
     csvFile = csv.reader(file)
-
+        
     for line in csvFile:
+        cache=0
+        global P_name
+        P_name = line[0]
         if(start==0):
             print("Starting the program:\n")
             print("*********************")
@@ -53,36 +72,50 @@ with open("/home/pi/Desktop/scan-data/Data.csv" , mode='r') as file:
         
         if (line[0]=='Name') or (line[0]=='Break'):
             time.sleep(3)
+            first=first+1
             print("Checking in again:")
             print("******************\n")
             continue
 
         print("Patient name: "+line[0]+"\n")
-        
+        patients[line[0]]=patients.get(line[0],0)
         heart_rate=int(line[1])
         
-        if(int(heart_rate<=110 and heart_rate>=60)):            
+        if(int(heart_rate<=100 and heart_rate>=60)):            
             if(first<=21):
-                conn.execute("""INSERT INTO Company (Name, Heartrate, Temperature, Status) \
+                conn.execute("""INSERT INTO Health (Name, Heartrate, Temperature, Status) \
                 VALUES (?,?,?,?);""",[(line[0]),(line[1]),(line[2]),('Normal')])
                 conn.commit()
+            else:
+                conn.execute("""UPDATE Health SET  Heartrate=?, Temperature=?, Status=? \
+                WHERE Name=?;""",[(line[1]),(line[2]),('Normal'),( line[0])])
+                conn.commit()
+            cache=patients[line[0]]
             print("The patient is fine")
         
-        elif(heart_rate>110):
+        elif(heart_rate>100):
             print("The patient is experiencing high heart rate. Seeking medical attention.\n")
+            name=line[0]
+            heart=line[1]
+            temp=line[2]
             if(first<=21):
-                name=line[0]
-                heart=line[1]
-                temp=line[2]
-                conn.execute("""INSERT INTO Company (Name, Heartrate, Temperature, Status) \
+                conn.execute("""INSERT INTO Health (Name, Heartrate, Temperature, Status) \
                 VALUES (?,?,?,?);""",[( line[0]),(line[1]),(line[2]),('High heart rate')])
+                conn.commit()
+            else:
+                conn.execute("""UPDATE Health SET  Heartrate=?, Temperature=?, Status=? \
+                WHERE Name=?;""",[(line[1]),(line[2]),('High heart rate'),( line[0])])
                 conn.commit()
             callDoc(line[0],line[1],line[2])
         else:
             print("The patient is experiencing low heart rate. Seeking medical attention")
             if(first<=21):
-                conn.execute("""INSERT INTO Company (Name, Heartrate, Temperature, Status) \
+                conn.execute("""INSERT INTO Health (Name, Heartrate, Temperature, Status) \
                 VALUES (?,?,?,?);""",[( line[0]),(line[1]),(line[2]),('Low heart Rate')])
+                conn.commit()
+            else:
+                conn.execute("""UPDATE Health SET  Heartrate=?, Temperature=?, Status=? \
+                WHERE Name=?;""",[(line[1]),(line[2]),('Low heart rate'),( line[0])])
                 conn.commit()
             callDoc(line[0],line[1],line[2])
 
@@ -93,7 +126,7 @@ with open("/home/pi/Desktop/scan-data/Data.csv" , mode='r') as file:
         
         
     print("Final status!\n")
-    cursor=conn.execute("""SELECT Name, Heartrate, Temperature, Status from Company""")
+    cursor=conn.execute("""SELECT Name, Heartrate, Temperature, Status from Health""")
     for row in cursor:
         print("Name = ", row[0])
         print ("Heartrate = ", row[1])
@@ -101,3 +134,6 @@ with open("/home/pi/Desktop/scan-data/Data.csv" , mode='r') as file:
         print ("Status = ", row[3], "\n")
     
     file.close()
+    
+print("Done")
+GPIO.cleanup()

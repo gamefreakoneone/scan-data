@@ -1,34 +1,23 @@
-import sqlite3
+import RPi.GPIO as GPIO
+import time
 
-conn = sqlite3.connect('test.db')
-print("Opened database successfully")
+GPIO.setmode(GPIO.BCM)
 
-conn.execute('''CREATE TABLE COMPANY
-         (ID INT PRIMARY KEY     NOT NULL,
-         NAME           TEXT    NOT NULL,
-         AGE            INT     NOT NULL,
-         ADDRESS        CHAR(50),
-         SALARY         REAL);''')
-print ("Table created successfully")
-conn.execute("INSERT INTO COMPANY (ID,NAME,AGE,ADDRESS,SALARY) \
-      VALUES (1, 'Paul', 32, 'California', 20000.00 )");
+def buttonEventHandler_rising(callback):
+    print("Button was pressed!")
 
-conn.execute("INSERT INTO COMPANY (ID,NAME,AGE,ADDRESS,SALARY) \
-      VALUES (2, 'Allen', 25, 'Texas', 15000.00 )");
-
-conn.execute("INSERT INTO COMPANY (ID,NAME,AGE,ADDRESS,SALARY) \
-      VALUES (3, 'Teddy', 23, 'Norway', 20000.00 )");
-
-conn.execute("INSERT INTO COMPANY (ID,NAME,AGE,ADDRESS,SALARY) \
-      VALUES (4, 'Mark', 25, 'Rich-Mond ', 65000.00 )");
-
-cursor = conn.execute("SELECT id, name, address, salary from COMPANY")
-for row in cursor:
-   print("ID = ", row[0])
-   print ("NAME = ", row[1])
-   print ("ADDRESS = ", row[2])
-   print ("SALARY = ", row[3], "\n")
-
-print("Operation done successfully")
-conn.commit()
-conn.close()
+GPIO.setup(18, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.add_event_detect(18, GPIO.RISING, callback=buttonEventHandler_rising)
+input_state=GPIO.input(18)
+i=0
+while True:
+    #input_state=GPIO.input(18)
+    print("This is a test! ",i)
+    time.sleep(2)
+    print("Hallaleuah", i)
+    i=i+1
+#     if input_state == False:
+#         print("Button Pressed")
+#         time.sleep(0.2)
+#     while True:
+#         print("Hello Test")

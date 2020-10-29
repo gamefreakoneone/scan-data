@@ -61,7 +61,6 @@ with open("/home/pi/Desktop/scan-data/Data.csv" , mode='r') as file:
     csvFile = csv.reader(file)
         
     for line in csvFile:
-        cache=0
         global P_name
         P_name = line[0]
         if(start==0):
@@ -72,7 +71,6 @@ with open("/home/pi/Desktop/scan-data/Data.csv" , mode='r') as file:
         
         if (line[0]=='Name') or (line[0]=='Break'):
             time.sleep(3)
-            first=first+1
             print("Checking in again:")
             print("******************\n")
             continue
@@ -82,7 +80,7 @@ with open("/home/pi/Desktop/scan-data/Data.csv" , mode='r') as file:
         heart_rate=int(line[1])
         
         if(int(heart_rate<=100 and heart_rate>=60)):            
-            if(first<=21):
+            if(first<=16):
                 conn.execute("""INSERT INTO Health (Name, Heartrate, Temperature, Status) \
                 VALUES (?,?,?,?);""",[(line[0]),(line[1]),(line[2]),('Normal')])
                 conn.commit()
@@ -98,7 +96,7 @@ with open("/home/pi/Desktop/scan-data/Data.csv" , mode='r') as file:
             name=line[0]
             heart=line[1]
             temp=line[2]
-            if(first<=21):
+            if(first<16):
                 conn.execute("""INSERT INTO Health (Name, Heartrate, Temperature, Status) \
                 VALUES (?,?,?,?);""",[( line[0]),(line[1]),(line[2]),('High heart rate')])
                 conn.commit()
@@ -109,7 +107,7 @@ with open("/home/pi/Desktop/scan-data/Data.csv" , mode='r') as file:
             callDoc(line[0],line[1],line[2])
         else:
             print("The patient is experiencing low heart rate. Seeking medical attention")
-            if(first<=21):
+            if(first<16):
                 conn.execute("""INSERT INTO Health (Name, Heartrate, Temperature, Status) \
                 VALUES (?,?,?,?);""",[( line[0]),(line[1]),(line[2]),('Low heart Rate')])
                 conn.commit()

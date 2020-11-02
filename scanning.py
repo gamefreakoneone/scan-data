@@ -7,6 +7,9 @@ import sqlite3
 #def button_callback(channel=18):
 #print("Button was pushed!")
 
+
+
+
 conn=sqlite3.connect('Halo.db')
 
 conn.execute('''CREATE TABLE Health
@@ -29,25 +32,30 @@ patients=dict()
 def callDoc(Name, Heart_Rate, Temperature):
     msg="Patient {} conditions:\nHeart Rate:{}\nTemperature:{}".format(Name,Heart_Rate,Temperature)
     print(msg)
+
     port.write(b'AT+CMGS="8688914045"\r')
     time.sleep(3)
     port.reset_output_buffer()
-    time.sleep(1)
+    time.sleep(3)
     port.write(str.encode(msg+chr(26)))
     time.sleep(3)
     print("message sent…")
+    port.reset_output_buffer()
 
 def Emergency(callback):
     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-    print("\n\nPatient ",P_name," is experiencing complications! Sending sms!\n\n")
-    msg="Patient {} is experiencing problems!! Asking for medical SUPPORT!".format(P_name)
-    port.write(b'AT+CMGS="8688914045"\r')
-    time.sleep(2)
     port.reset_output_buffer()
-    time.sleep(2)
-    port.write(str.encode(msg+chr(26)))
-    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    print("\n\nPatient",P_name,"seeking medical attention!\n\n")
+    msg="Patient {} is experiencing problems!! Asking for medical SUPPORT!".format(P_name)
+    #msg=" Patient Amogh is experiencing problems!! Asking for medical SUPPORT!"
+    port.write(b'AT+CMGS="8688914045"\r')
     time.sleep(3)
+    port.reset_output_buffer()
+    time.sleep(8)
+    port.write(str.encode(msg+chr(26)))
+    print("SMS sent....")
+    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    pause =0
 
 GPIO.setmode(GPIO.BCM)
 port = serial.Serial("/dev/ttyS0", baudrate=9600, timeout=1)
@@ -68,26 +76,30 @@ with open("/home/pi/Desktop/scan-data/Data.csv" , mode='r') as file:
     csvFile = csv.reader(file)
         
     for line in csvFile:
+        time.sleep(2)
         global P_name
         P_name = line[0]
+        
         if(start==0):
             print("Starting the program:\n")
             print("*********************")
             start=start+1
             continue
         
+            
         if (line[0]=='Name') or (line[0]=='Break'):
-            time.sleep(3)
+            time.sleep(1)
             print("Checking in again:")
             print("******************\n")
             conn.execute("""INSERT INTO History (Name, Heartrate, Temperature, Status) \
                 VALUES (?,?,?,?);""",[('Next Room'),(''),(''),('')])
             continue
-
+        
+        time.sleep(1)
         print("Patient name: "+line[0]+"\n")
         patients[line[0]]=patients.get(line[0],0)
         heart_rate=int(line[1])
-        
+
         if(int(heart_rate<=100 and heart_rate>=60)):            
             if(first<=16):
                 conn.execute("""INSERT INTO Health (Name, Heartrate, Temperature, Status) \
@@ -101,6 +113,7 @@ with open("/home/pi/Desktop/scan-data/Data.csv" , mode='r') as file:
                 VALUES (?,?,?,?);""",[(line[0]),(line[1]),(line[2]),('Normal')])
             cache=patients[line[0]]
             print("The patient is fine")
+            time.sleep(3)
         
         elif(heart_rate>100):
             print("The patient is experiencing high heart rate. Seeking medical attention.\n")
@@ -134,8 +147,9 @@ with open("/home/pi/Desktop/scan-data/Data.csv" , mode='r') as file:
 
         print("________________________________________")
         print("")
-        time.sleep(2)
+        
         first=first+1
+        time.sleep(7)
         
         
     print("Final status!\n")
